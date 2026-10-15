@@ -9,3 +9,4 @@ generate:
   gin-server: true
 compatibility:
   always-prefix-enum-values: true
+  enable-auth-scopes-on-context: true

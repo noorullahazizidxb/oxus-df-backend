@@ -24,7 +24,7 @@ type TokenVerifier interface {
 // file, so public operations (login, app config) need no allow-list here.
 func Authenticate(v TokenVerifier) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if _, secured := c.Get(gen.BearerAuthScopes); !secured {
+		if _, secured := c.Get(string(gen.BearerAuthScopes)); !secured {
 			return
 		}
 
