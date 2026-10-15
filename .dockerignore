@@ -1,0 +1,8 @@
+# File: .dockerignore
+# Usage: Files Docker must not copy into the image (keeps secrets and junk out).
+
+.git
+.env
+bin
+coverage.out
+deploy

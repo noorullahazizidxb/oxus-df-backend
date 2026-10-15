@@ -1,0 +1,129 @@
+# File: docs/api.http
+# Usage: Ready-made API requests for the VS Code "REST Client" extension (humao.rest-client).
+#        Open this file, click "Send Request" above any request. Run "Login" first.
+#        Thunder Client users: see README section "Test the API".
+
+@baseUrl = http://localhost:8080/api/v1
+@email = admin@example.com
+@password = change-me-please-123
+
+###############################################################################
+# 0. Health (no login needed)
+###############################################################################
+
+### Is the API alive?
+GET http://localhost:8080/healthz
+
+### Are PostgreSQL and Valkey reachable?
+GET http://localhost:8080/readyz
+
+### Minimum supported mobile app version
+GET {{baseUrl}}/app/config
+
+###############################################################################
+# 1. Login  (click "Send Request" here first; the token is reused below)
+###############################################################################
+
+# @name login
+POST {{baseUrl}}/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### The token from the login response is saved here automatically
+@token = {{login.response.body.access_token}}
+
+###############################################################################
+# 2. Products CRUD
+###############################################################################
+
+### Create a product  (also saves its id for the requests below)
+# @name createProduct
+POST {{baseUrl}}/admin/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "MURABAHA1",
+  "name": "Murabaha financing",
+  "description": "Short-term trade financing",
+  "currency": "AFN",
+  "min_amount": "1000.00",
+  "max_amount": "50000.00",
+  "annual_rate": "12.50",
+  "status": "active"
+}
+
+###
+@productId = {{createProduct.response.body.id}}
+
+### List products (page 1, 20 per page)
+GET {{baseUrl}}/admin/products?page=1&page_size=20
+Authorization: Bearer {{token}}
+
+### List only active products whose name or code contains "mura"
+GET {{baseUrl}}/admin/products?status=active&q=mura
+Authorization: Bearer {{token}}
+
+### Get one product
+GET {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### Update a product (code and currency cannot change)
+PUT {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Murabaha financing (updated)",
+  "description": "Updated description",
+  "min_amount": "2000.00",
+  "max_amount": "60000.00",
+  "annual_rate": "11.00",
+  "status": "active"
+}
+
+### Download all products as Excel (use "Save Response Body" to keep the file)
+GET {{baseUrl}}/admin/exports/products
+Authorization: Bearer {{token}}
+
+### Delete a product (soft delete, returns 204)
+DELETE {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+
+###############################################################################
+# 3. Error cases (these SHOULD fail; use them to see the error format)
+###############################################################################
+
+### 401: no token
+GET {{baseUrl}}/admin/products
+
+### 400: invalid data (max below min, bad currency)
+POST {{baseUrl}}/admin/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "BAD1",
+  "name": "Bad product",
+  "currency": "XX",
+  "min_amount": "5000.00",
+  "max_amount": "100.00",
+  "annual_rate": "12.50"
+}
+
+### 404: product does not exist
+GET {{baseUrl}}/admin/products/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+### 401: wrong password (5 wrong tries in a row lock the account for 15 minutes)
+POST {{baseUrl}}/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "wrong-password"
+}

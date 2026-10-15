@@ -1,0 +1,91 @@
+# File: deploy/compose/docker-compose.dev.yml
+# Usage: Local development stack: PostgreSQL, Valkey, migrations, API, worker and Nginx. Start with `make up`.
+
+name: oxus-df
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  image: oxus-df-backend:dev
+  env_file:
+    - ../../.env
+  environment:
+    OXUS_DATABASE_URL: postgres://oxus:oxus@postgres:5432/oxus?sslmode=disable
+    OXUS_VALKEY_URL: redis://valkey:6379/0
+    OXUS_HTTP_TRUSTED_PROXIES: 172.16.0.0/12
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: oxus
+      POSTGRES_PASSWORD: oxus
+      POSTGRES_DB: oxus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oxus -d oxus"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Applies db/migrations (golang-migrate), then exits.
+  migrate:
+    image: migrate/migrate:v4.18.3
+    command: ["-path=/migrations", "-database=postgres://oxus:oxus@postgres:5432/oxus?sslmode=disable", "up"]
+    volumes:
+      - ../../db/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Applies River's own tables, then exits.
+  river-migrate:
+    <<: *app
+    entrypoint: ["/app/worker", "migrate"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    <<: *app
+    entrypoint: ["/app/api"]
+    expose:
+      - "8080"
+    depends_on:
+      river-migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    entrypoint: ["/app/worker"]
+    depends_on:
+      river-migrate:
+        condition: service_completed_successfully
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

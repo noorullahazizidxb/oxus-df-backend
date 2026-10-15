@@ -1,0 +1,24 @@
+# File: .golangci.yml
+# Usage: Linter settings for golangci-lint (style, bugs and security checks via gosec).
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - gosec
+    - errorlint
+    - gocritic
+    - misspell
+    - revive
+    - unconvert
+    - nolintlint
+    - bodyclose
+    - noctx
+
+formatters:
+  enable:
+    - gofumpt

@@ -1,0 +1,9 @@
+# File: .gitignore
+# Usage: Files Git must not track: your secrets (.env), build output (bin/) and test coverage.
+
+.env
+bin/
+coverage.out
+*.test
+.idea/
+.vscode/

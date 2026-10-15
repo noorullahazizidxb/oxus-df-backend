@@ -1,0 +1,11 @@
+# File: api/v1/oapi-codegen.yaml
+# Usage: oapi-codegen settings: generates Go models and the Gin server interface from api/v1/openapi.yaml.
+#        Run from the repo root: make oapi
+
+package: gen
+output: internal/httpapi/v1/gen/api.gen.go
+generate:
+  models: true
+  gin-server: true
+compatibility:
+  always-prefix-enum-values: true

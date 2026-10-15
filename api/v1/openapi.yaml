@@ -1,0 +1,335 @@
+# File: api/v1/openapi.yaml
+# Usage: API contract (version 1). Backend, admin panel and mobile app are generated from this file.
+
+openapi: 3.0.3
+info:
+  title: OXUS Digital Finance API
+  version: 1.0.0
+  description: >
+    Source of truth for API v1. The backend (oapi-codegen), the admin panel (Orval)
+    and the mobile app (Dart client) are all generated from this file.
+servers:
+  - url: /api/v1
+tags:
+  - name: auth
+  - name: products
+  - name: app
+
+security:
+  - bearerAuth: []
+
+paths:
+  /app/config:
+    get:
+      operationId: getAppConfig
+      tags: [app]
+      summary: Runtime configuration for the mobile app (minimum supported version)
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfig'
+
+  /admin/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Exchange admin credentials for a short-lived access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /admin/products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List financing products
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, format: int32, minimum: 1, maximum: 100000, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, format: int32, minimum: 1, maximum: 100, default: 20 }
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProductStatus'
+        - name: q
+          in: query
+          description: Case-insensitive search in name and code
+          schema: { type: string, maxLength: 100 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a financing product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /admin/products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a product
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Replace the editable fields of a product (code and currency are immutable)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Soft-delete a product
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/exports/products:
+    get:
+      operationId: exportProducts
+      tags: [products]
+      summary: Download all products as an Excel file (audited)
+      responses:
+        '200':
+          description: XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Role is not allowed to perform this action
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    TooManyRequests:
+      description: Rate limit or login lockout
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: validation_failed }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                required: [field, message]
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+
+    AppConfig:
+      type: object
+      required: [min_app_version, server_time]
+      properties:
+        min_app_version: { type: string, example: 1.0.0 }
+        server_time: { type: string, format: date-time }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, maxLength: 128 }
+
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer, description: Lifetime in seconds }
+
+    ProductStatus:
+      type: string
+      enum: [draft, active, archived]
+
+    Product:
+      type: object
+      required: [id, code, name, description, currency, min_amount, max_amount, annual_rate, status, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        currency: { type: string, example: AFN }
+        min_amount: { type: string, example: '1000.00', description: Decimal string, 2 places }
+        max_amount: { type: string, example: '50000.00' }
+        annual_rate: { type: string, example: '12.50', description: Percent }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateProductRequest:
+      type: object
+      required: [code, name, currency, min_amount, max_amount, annual_rate]
+      properties:
+        code: { type: string, minLength: 2, maxLength: 32, example: MURABAHA1 }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        currency: { type: string, minLength: 3, maxLength: 3, example: AFN }
+        min_amount: { type: string, example: '1000.00' }
+        max_amount: { type: string, example: '50000.00' }
+        annual_rate: { type: string, example: '12.50' }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+
+    UpdateProductRequest:
+      type: object
+      required: [name, description, min_amount, max_amount, annual_rate, status]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        min_amount: { type: string }
+        max_amount: { type: string }
+        annual_rate: { type: string }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+
+    PageMeta:
+      type: object
+      required: [page, page_size, total]
+      properties:
+        page: { type: integer, format: int32 }
+        page_size: { type: integer, format: int32 }
+        total: { type: integer, format: int64 }
+
+    ProductList:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Product' }
+        meta: { $ref: '#/components/schemas/PageMeta' }
