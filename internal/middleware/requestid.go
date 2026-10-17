@@ -29,6 +29,8 @@ func RequestID() gin.HandlerFunc {
 		}
 		c.Header(RequestIDHeader, id)
 		ctx := reqctx.With(c.Request.Context(), reqctx.Info{RequestID: id, ClientIP: c.ClientIP()})
+		// Contexts and requests are immutable-style values: WithContext returns
+		// a derived request, so middleware must assign it for later handlers.
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}

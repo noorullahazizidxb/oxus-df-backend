@@ -55,6 +55,10 @@ func (r *PgRepository) Get(ctx context.Context, id uuid.UUID) (Product, error) {
 func (r *PgRepository) List(ctx context.Context, f ListFilter) ([]Product, int64, error) {
 	q := r.db.Queries(ctx)
 
+	// sqlc uses pointers for nullable SQL parameters. A nil pointer means
+	// "do not filter"; a pointer to an empty string would mean a real empty
+	// value. This is how Go represents optional values without JS-style
+	// undefined/null unions.
 	var status, search *string
 	if f.Status != nil {
 		s := string(*f.Status)

@@ -3,7 +3,8 @@
 
 // Package config loads settings with koanf: built-in defaults first, then
 // OXUS_* environment variables (OXUS_DATABASE_URL -> database_url).
-// Vault for staging/production is planned but not added yet (see README section 8).
+// Vault for staging/production is planned but not added yet (see README's
+// "Libraries used" section).
 package config
 
 import (

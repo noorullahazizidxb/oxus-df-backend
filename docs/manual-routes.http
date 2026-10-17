@@ -1,0 +1,121 @@
+# File: docs/manual-routes.http
+# Usage: Manual per-route verification checklist for all API routes.
+# Send requests top-to-bottom.
+
+@origin = http://localhost:8080
+@baseUrl = {{origin}}/api/v1
+@email = admin@example.com
+@password = change-me-please-123
+@code = ROUTETEST{{$timestamp}}
+
+###############################################################################
+# A. Public and infra routes
+###############################################################################
+
+### [A1] GET /healthz -> 200
+GET {{origin}}/healthz
+
+### [A2] GET /readyz -> 200
+GET {{origin}}/readyz
+
+### [A3] GET /metrics through Nginx -> 404 (blocked by design)
+GET {{origin}}/metrics
+
+### [A4] GET /api/v1/app/config -> 200
+GET {{baseUrl}}/app/config
+
+###############################################################################
+# B. Auth route
+###############################################################################
+
+### [B1] POST /api/v1/admin/auth/login -> 200
+# @name login
+POST {{baseUrl}}/admin/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+@token = {{login.response.body.access_token}}
+
+###############################################################################
+# C. Product routes
+###############################################################################
+
+### [C1] POST /api/v1/admin/products -> 201
+# @name createProduct
+POST {{baseUrl}}/admin/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "{{code}}",
+  "name": "Route test product",
+  "description": "Created from manual-routes.http",
+  "currency": "AFN",
+  "min_amount": "1000.00",
+  "max_amount": "50000.00",
+  "annual_rate": "12.50",
+  "status": "active"
+}
+
+###
+@productId = {{createProduct.response.body.id}}
+
+### [C2] GET /api/v1/admin/products?page=1&page_size=20 -> 200
+GET {{baseUrl}}/admin/products?page=1&page_size=20
+Authorization: Bearer {{token}}
+
+### [C3] GET /api/v1/admin/products/{id} -> 200
+GET {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### [C4] PUT /api/v1/admin/products/{id} -> 200
+PUT {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Route test product (updated)",
+  "description": "Updated from manual-routes.http",
+  "min_amount": "2000.00",
+  "max_amount": "60000.00",
+  "annual_rate": "11.00",
+  "status": "active"
+}
+
+### [C5] GET /api/v1/admin/exports/products -> 200
+GET {{baseUrl}}/admin/exports/products
+Authorization: Bearer {{token}}
+
+### [C6] DELETE /api/v1/admin/products/{id} -> 204
+DELETE {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### [C7] GET /api/v1/admin/products/{id} after delete -> 404
+GET {{baseUrl}}/admin/products/{{productId}}
+Authorization: Bearer {{token}}
+
+###############################################################################
+# D. Negative checks (optional)
+###############################################################################
+
+### [D1] GET /api/v1/admin/products without token -> 401
+GET {{baseUrl}}/admin/products
+
+### [D2] POST /api/v1/admin/products invalid currency -> 400
+POST {{baseUrl}}/admin/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "BAD{{$timestamp}}",
+  "name": "Bad product",
+  "currency": "XX",
+  "min_amount": "1000.00",
+  "max_amount": "50000.00",
+  "annual_rate": "12.50"
+}

@@ -2,7 +2,7 @@
 # File: deploy/docker/Dockerfile
 # Usage: Builds both binaries (api and worker); the compose file picks which one runs via `entrypoint`.
 # Generated code (oapi-codegen, sqlc) must be committed before building.
-FROM golang:1.25-bookworm AS build
+FROM golang:1.26-bookworm AS build
 WORKDIR /src
 
 COPY go.mod go.sum ./

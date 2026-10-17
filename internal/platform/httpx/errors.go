@@ -81,6 +81,8 @@ func ParamErrorHandler(c *gin.Context, err error, _ int) {
 }
 
 // ValueOr returns *p, or def when p is nil. Handy for optional query params.
+// [T any] is a Go generic type parameter: the compiler creates a type-safe
+// version for each call, rather than requiring `any` casts like a JS helper.
 func ValueOr[T any](p *T, def T) T {
 	if p == nil {
 		return def

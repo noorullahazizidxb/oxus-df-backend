@@ -29,6 +29,9 @@ func (ChangedArgs) Kind() string { return "products.changed" }
 
 // ChangedWorker runs in cmd/worker.
 type ChangedWorker struct {
+	// The embedded generic type supplies River's default implementation. Go
+	// embeds fields rather than using class inheritance; its methods are
+	// promoted to ChangedWorker unless this type defines its own version.
 	river.WorkerDefaults[ChangedArgs]
 	log *slog.Logger
 }

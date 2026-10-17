@@ -118,6 +118,9 @@ func run() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
+	// A channel is Go's typed way to pass a value between goroutines. Buffering
+	// one result lets this goroutine report a startup failure without waiting
+	// for the select below to begin receiving.
 	serveErr := make(chan error, 1)
 	go func() {
 		log.Info("api listening", "addr", cfg.HTTPAddr, "env", cfg.Env)

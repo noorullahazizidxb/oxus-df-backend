@@ -43,6 +43,8 @@ func (l *Limiter) redisKey(key string) string { return "oxus:rl:" + key }
 // Hit increments the counter and starts the window on the first hit.
 func (l *Limiter) Hit(ctx context.Context, key string, window time.Duration) (int64, error) {
 	k := l.redisKey(key)
+	// Commands are queued first and executed together by Exec. The returned
+	// command object is a Go library pattern: read its value only after Exec.
 	pipe := l.rdb.TxPipeline()
 	incr := pipe.Incr(ctx, k)
 	pipe.ExpireNX(ctx, k, window)
